@@ -129,11 +129,11 @@ elif st.session_state.logged_in and st.session_state.page == 'upload':
                 st.download_button("Download Predictions as CSV", csv, "predictions.csv", "text/csv")
         else:
             st.error("Error reading uploaded files. Please check the file formats.")
-
-    except Exception as e:
-            st.error(f"Error during prediction: {e}")
-else:
-    st.warning("Please upload exactly 3 files (.csv or .xlsx)")
+        
+        except Exception as e:
+        st.error(f"Error during prediction: {e}")
+    else:
+        st.warning("Please upload exactly 3 files (.csv or .xlsx)")
 
 # --- End of app
     
