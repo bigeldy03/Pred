@@ -51,7 +51,7 @@ if 'logged_in' not in st.session_state:
 if 'page' not in st.session_state:
     st.session_state.page = 'login'
 
-# --- Pages
+# Proper page navigation
 if st.session_state.page == 'login':
     st.title("Login")
     username = st.text_input("Username")
@@ -60,11 +60,11 @@ if st.session_state.page == 'login':
     if st.button("Login"):
         if login(username, password):
             st.session_state.logged_in = True
-    st.success("Logged in successfully!")
-    st.session_state.page = 'upload'
-    st.rerun()
-else:
-    st.error("Incorrect username or password.")
+            st.success("Logged in successfully!")
+            st.session_state.page = 'upload'
+            st.rerun()
+        else:
+            st.error("Incorrect username or password.")
 
     if st.button("Create New Account"):
         st.session_state.page = 'signup'
@@ -86,6 +86,11 @@ elif st.session_state.page == 'signup':
     if st.button("Back to Login"):
         st.session_state.page = 'login'
         st.rerun()
+
+elif st.session_state.logged_in and st.session_state.page == 'upload':
+    st.title("Upload Files for Prediction")
+    # your upload logic
+
 
 elif st.session_state.logged_in and st.session_state.page == 'upload':
     st.title("Upload Files for Prediction")
