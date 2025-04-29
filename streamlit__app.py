@@ -69,7 +69,7 @@ if st.session_state.page == 'login':
 
     if st.button("Create New Account"):
         st.session_state.page = 'signup'
-        st.experimental_rerun()
+        st.rerun()
 
 elif st.session_state.page == 'signup':
     st.title("Create New Account")
@@ -80,13 +80,13 @@ elif st.session_state.page == 'signup':
         if signup(new_username, new_password):
             st.success("Account created successfully!")
             st.session_state.page = 'login'
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Username already exists. Try another one.")
 
     if st.button("Back to Login"):
         st.session_state.page = 'login'
-        st.experimental_rerun()
+        st.rerun()
 
 elif st.session_state.logged_in and st.session_state.page == 'upload':
     st.title("Upload Files for Prediction")
