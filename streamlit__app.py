@@ -58,11 +58,12 @@ if st.session_state.page == 'login':
     password = st.text_input("Password", type="password")
 
     if st.button("Login"):
-        if login(username, password):
-            st.session_state.logged_in = True
-            st.success("Logged in successfully!")
-            st.session_state.page = 'upload'
-            st.experimental_rerun()
+    if login(username, password):
+        st.session_state.logged_in = True
+        st.success("Logged in successfully!")
+        st.session_state.page = 'upload'
+        st.rerun()
+
         else:
             st.error("Incorrect username or password.")
 
