@@ -1,4 +1,4 @@
-# streamlit__app.py
+# streamlit_app.py
 
 import streamlit as st
 import pandas as pd
@@ -8,6 +8,7 @@ import tensorflow as tf
 import joblib
 
 # --- Set page configuration
+
 st.set_page_config(page_title="User Behavior & Traffic Prediction", page_icon="🚀", layout="wide")
 
 # --- Load Models
@@ -17,8 +18,6 @@ def load_models():
     model_m9 = tf.keras.models.load_model('M9_model.h5', compile=False)
     traffic_model = joblib.load('traffic_prediction_modelGd.pkl')
     return model_m1, model_m9, traffic_model
-
-model_m1, model_m9, traffic_model = load_models()
 
 # --- User management
 USERS_FILE = 'Users.json'
@@ -52,7 +51,7 @@ if 'logged_in' not in st.session_state:
 if 'page' not in st.session_state:
     st.session_state.page = 'login'
 
-# --- Pages logic
+# --- Pages
 if st.session_state.page == 'login':
     st.title("Login")
     username = st.text_input("Username")
@@ -61,15 +60,16 @@ if st.session_state.page == 'login':
     if st.button("Login"):
         if login(username, password):
             st.session_state.logged_in = True
-            st.success("Logged in successfully!")
-            st.session_state.page = 'upload'
-            st.experimental_rerun()
+    st.success("Logged in successfully!")
+        st.session_state.page = 'upload'
+        st.rerun()
+
         else:
             st.error("Incorrect username or password.")
 
     if st.button("Create New Account"):
         st.session_state.page = 'signup'
-        st.experimental_rerun()
+        st.rerun()
 
 elif st.session_state.page == 'signup':
     st.title("Create New Account")
@@ -80,13 +80,13 @@ elif st.session_state.page == 'signup':
         if signup(new_username, new_password):
             st.success("Account created successfully!")
             st.session_state.page = 'login'
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Username already exists. Try another one.")
 
     if st.button("Back to Login"):
         st.session_state.page = 'login'
-        st.experimental_rerun()
+        st.rerun()
 
 elif st.session_state.logged_in and st.session_state.page == 'upload':
     st.title("Upload Files for Prediction")
