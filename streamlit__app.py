@@ -15,7 +15,7 @@ st.set_page_config(page_title="User Behavior & Traffic Prediction", page_icon="ð
 def load_models():
     model_m1 = tf.keras.models.load_model('M1_model.h5')
     model_m9 = tf.keras.models.load_model('M9_model.h5')
-    traffic_model = joblib.load('TrafficPrediction.pkl')
+    traffic_model = joblib.load('traffic_prediction_modelGd.pkl')
     return model_m1, model_m9, traffic_model
 
 model_m1, model_m9, traffic_model = load_models()
