@@ -98,35 +98,20 @@ elif st.session_state.logged_in and st.session_state.page == 'upload':
 
     uploaded_files = st.file_uploader("Upload your 3 files", accept_multiple_files=True, type=['csv'])
 
-    if uploaded_files and len(uploaded_files) == 3:
-        try:
-            df1 = pd.read_csv(uploaded_files[0])
-            df2 = pd.read_csv(uploaded_files[1])
-            df3 = pd.read_csv(uploaded_files[2])
+if uploaded_files and len(uploaded_files) == 3:
+    try:
+        df1 = pd.read_csv(uploaded_files[0])
+        df2 = pd.read_csv(uploaded_files[1])
+        df3 = pd.read_csv(uploaded_files[2])
 
-            # Predictions
-            pred1 = model_m1.predict(df1)
-            pred2 = model_m9.predict(df2)
-            pred3 = traffic_model.predict(df3)
+        # Predictions here...
+        # model_m1.predict(df1), etc.
+        
+        # Display predictions
+        st.subheader("Predictions")
+        # Show results...
 
-            # Average combination
-            final_prediction = (pred1.flatten() + pred2.flatten() + pred3.flatten()) / 3
-
-            # Display
-            st.subheader("Predictions")
-            prediction_df = pd.DataFrame({
-                "Bundle 1 Prediction": pred1.flatten(),
-                "Bundle 2 Prediction": pred2.flatten(),
-                "Traffic Prediction": pred3.flatten(),
-                "Final Combined Prediction": final_prediction
-            })
-            st.dataframe(prediction_df)
-
-            # Download button
-            csv = prediction_df.to_csv(index=False).encode('utf-8')
-            st.download_button("Download Predictions as CSV", csv, "predictions.csv", "text/csv")
-
-        except Exception as e:
-            st.error(f"Error during prediction: {e}")
-    else:
-        st.warning("Please upload exactly 3 files.")
+    except Exception as e:
+        st.error(f"Error during prediction: {e}")
+else:
+    st.warning("Please upload exactly 3 CSV files.")
