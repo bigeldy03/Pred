@@ -63,9 +63,8 @@ if st.session_state.page == 'login':
     st.success("Logged in successfully!")
     st.session_state.page = 'upload'
     st.rerun()
-
-        else:
-            st.error("Incorrect username or password.")
+else:
+    st.error("Incorrect username or password.")
 
     if st.button("Create New Account"):
         st.session_state.page = 'signup'
