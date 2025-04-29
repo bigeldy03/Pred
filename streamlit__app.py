@@ -6,11 +6,6 @@ import json
 import os
 import tensorflow as tf
 import joblib
-import h5py
-
-
-from keras.saving.legacy.hdf5_format import load_model_from_hdf5
-
 
 # --- Set page configuration
 
@@ -19,14 +14,9 @@ st.set_page_config(page_title="User Behavior & Traffic Prediction", page_icon="ð
 # --- Load Models
 @st.cache_resource
 def load_models():
-    with h5py.File('M1_model.h5', 'r') as f:
-        model_m1 = load_model_from_hdf5(f)
-
-    with h5py.File('M9_model.h5', 'r') as f:
-        model_m9 = load_model_from_hdf5(f)
-
+    model_m1 = tf.keras.models.load_model('M1_model.h5', compile=False)
+    model_m9 = tf.keras.models.load_model('M9_model.h5', compile=False)
     traffic_model = joblib.load('traffic_prediction_modelGd.pkl')
-
     return model_m1, model_m9, traffic_model
 
 # --- User management
