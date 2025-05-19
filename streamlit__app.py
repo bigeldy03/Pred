@@ -3,17 +3,17 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-import joblib  # For saving/loading models and scalers
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+import joblib
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
 import xgboost as xgb
-from prophet import Prophet
+from prophet import Prophet  # Import Prophet
 
 # --- Streamlit App ---
-st.title("Time Series Prediction")
+st.title("Multivariate Time Series Prediction")
 
-# --- Date Preprocessing (from your notebook) ---
+# --- Date Preprocessing ---
 def process_dates(df):
     df['Date'] = pd.to_numeric(df['Date'], errors='coerce')
     df = df[(df['Date'] > 0) & (df['Date'] < 50000)]
@@ -21,12 +21,10 @@ def process_dates(df):
     return df
 
 # --- Numerical Data Preprocessing ---
-def preprocess_numerical(df, target_column, scaler=None, is_training=True):
+def preprocess_numerical(df, scaler=None, is_training=True):
     numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     if 'Date' in numerical_cols:
         numerical_cols.remove('Date')
-    if target_column in numerical_cols:
-        numerical_cols.remove(target_column)
 
     df[numerical_cols] = df[numerical_cols].fillna(df[numerical_cols].mean())
 
@@ -38,75 +36,140 @@ def preprocess_numerical(df, target_column, scaler=None, is_training=True):
         df[numerical_cols] = scaler.transform(df[numerical_cols])
         return df, scaler
 
-# --- Create Sequences for LSTM ---
-def create_sequences(data, seq_length, target_column):
+# --- Create Sequences for LSTM (Multivariate) ---
+def create_sequences(data, seq_length):
     xs = []
     ys = []
-    target_index = data.columns.get_loc(target_column)
     for i in range(len(data) - seq_length):
-        x = data.iloc[i:(i + seq_length)].drop(columns=[target_column])
-        y = data.iloc[i + seq_length, target_index]
+        x = data.iloc[i:(i + seq_length)]
+        y = data.iloc[i + seq_length]
         xs.append(x)
         ys.append(y)
     return np.array(xs), np.array(ys)
 
-# --- LSTM Model ---
-def create_lstm_model(input_shape):
+# --- LSTM Model (Multivariate Output) ---
+def create_lstm_model(input_shape, output_dim):
     model = Sequential()
     model.add(LSTM(50, activation='relu', input_shape=input_shape))
-    model.add(Dense(1))
+    model.add(Dense(output_dim))  # Output layer now has 'output_dim' units
     model.compile(optimizer='adam', loss='mse')
     return model
 
-# --- XGBoost Model ---
-def create_xgboost_model():
-    model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100, random_state=42)
+# --- XGBoost Model (Multivariate Output) ---
+def create_xgboost_model(output_dim):
+    model = xgb.XGBRegressor(
+        objective='reg:squarederror',
+        n_estimators=100,
+        random_state=42
+    )  # Basic XGBoost
     return model
 
-# --- Prophet Model ---
-def create_prophet_model():
-    model = Prophet()
-    return model
+# --- Prophet Model (Modified for Multiple Columns) ---
+def create_prophet_models(df, numerical_cols):
+    prophet_models = {}
+    for col in numerical_cols:
+        model = Prophet()
+        prophet_models[col] = model
+    return prophet_models
+
+def train_prophet_models(prophet_models, df):
+    prophet_forecasts = {}
+    df_prophet = df[['Date'] + numerical_cols].copy()
+    df_prophet = df_prophet.rename(columns={'Date': 'ds'})
+
+    for col, model in prophet_models.items():
+        temp_df = df_prophet[['ds', col]].rename(columns={col: 'y'})
+        model.fit(temp_df)
+        future = model.make_future_dataframe(periods=30, freq='D')  # Adjust periods as needed
+        forecast = model.predict(future)
+        prophet_forecasts[col] = forecast
+    return prophet_forecasts
 
 # --- Train and Evaluate ---
-def train_and_evaluate(df, target_column, model_type="LSTM", seq_length=10):
-    df = df.copy() # Avoid modifying original DataFrame
+def train_and_evaluate(df, model_type="LSTM", seq_length=10):
+    df = df.copy()
     df = process_dates(df)
-    df, scaler = preprocess_numerical(df, target_column)
+    df, scaler = preprocess_numerical(df)  # Now preprocesses all numerical
+
+    numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if 'Date' in numerical_cols:
+        numerical_cols.remove('Date')
+    output_dim = len(numerical_cols)  # Number of columns to predict
+
+    results = {}
 
     if model_type == "LSTM":
-        df_for_lstm = df.drop(columns=['Date'])
-        X, y = create_sequences(df_for_lstm, seq_length, target_column)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
-        model = create_lstm_model(input_shape=(X_train.shape[1], X_train.shape[2]))
+        X, y = create_sequences(df.drop(columns=['Date']), seq_length)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, shuffle=False
+        )
+        model = create_lstm_model(
+            input_shape=(X_train.shape[1], X_train.shape[2]), output_dim=output_dim
+        )
         model.fit(X_train, y_train, epochs=20, verbose=0)
         y_pred = model.predict(X_test)
+        y_test = y_test
+        y_pred = y_pred
+
+        mse = mean_squared_error(y_test, y_pred)
+        mae = mean_absolute_error(y_test, y_pred)
+
+        results = {
+            "model": model,
+            "scaler": scaler,
+            "mse": mse,
+            "mae": mae,
+            "y_test": y_test,
+            "y_pred": y_pred,
+        }
+
     elif model_type == "XGBoost":
-        df_for_xgboost = df.drop(columns=['Date'])
-        X = df_for_xgboost.drop(columns=[target_column])
-        y = df_for_xgboost[target_column]
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
-        model = create_xgboost_model()
+        X = df.drop(columns=['Date'] + numerical_cols)
+        y = df[numerical_cols]
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, shuffle=False
+        )
+        model = create_xgboost_model(output_dim=output_dim)
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
+
+        mse = mean_squared_error(y_test, y_pred)
+        mae = mean_absolute_error(y_test, y_pred)
+
+        results = {
+            "model": model,
+            "scaler": scaler,
+            "mse": mse,
+            "mae": mae,
+            "y_test": y_test,
+            "y_pred": y_pred,
+        }
+
     elif model_type == "Prophet":
-        df_for_prophet = df[['Date', target_column]].copy()
-        df_for_prophet.columns = ['ds', 'y']  # Prophet requires 'ds' and 'y'
-        model = create_prophet_model()
-        model.fit(df_for_prophet)
-        future = model.make_future_dataframe(periods=30)  # Predict 30 days into the future
-        forecast = model.predict(future)
-        y_pred = forecast.tail(len(df_for_prophet) - int(0.8 * len(df_for_prophet)))['yhat'].values
-        y_test = df_for_prophet.tail(len(df_for_prophet) - int(0.8 * len(df_for_prophet)))['y'].values
+        prophet_models = create_prophet_models(df, numerical_cols)
+        prophet_forecasts = train_prophet_models(prophet_models, df)
+
+        # Basic evaluation (can be improved)
+        total_mse = 0
+        total_mae = 0
+        for col in numerical_cols:
+            forecast = prophet_forecasts[col]
+            y_true = df.tail(len(forecast) - len(forecast))
+            y_pred = forecast.tail(len(forecast) - len(forecast))
+            total_mse += mean_squared_error(y_true[col], y_pred['yhat'])
+            total_mae += mean_absolute_error(y_true[col], y_pred['yhat'])
+
+        results = {
+            "model": prophet_models,
+            "mse": total_mse / len(numerical_cols),
+            "mae": total_mae / len(numerical_cols),
+            "forecasts": prophet_forecasts,
+        }
+
     else:
         raise ValueError("Invalid model type")
 
-    if model_type != "Prophet":
-        y_pred = y_pred.flatten()
-    mse = mean_squared_error(y_test, y_pred)
-    mae = mean_absolute_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-    return model, scaler, mse, mae, r2, y_test, y_pred
+    return results
 
 # --- Streamlit UI ---
 uploaded_file = st.file_uploader("Upload your data (CSV or Excel)")
@@ -123,28 +186,46 @@ if uploaded_file is not None:
         st.subheader("Uploaded Data")
         st.dataframe(df.head())
 
-        target_column = st.selectbox("Select the target column for prediction", df.columns)
-        model_type = st.selectbox("Select the model", ["LSTM", "XGBoost", "Prophet"])
-        seq_length = st.slider("LSTM Sequence Length", min_value=1, max_value=30, value=10) if model_type == "LSTM" else None
+        model_type = st.selectbox(
+            "Select the model", ["LSTM", "XGBoost", "Prophet"]
+        )
+        seq_length = (
+            st.slider("LSTM Sequence Length", min_value=1, max_value=30, value=10)
+            if model_type == "LSTM"
+            else None
+        )
 
         if st.button("Train and Predict"):
             try:
-                model, scaler, mse, mae, r2, y_test, y_pred = train_and_evaluate(df, target_column, model_type, seq_length)
+                results = train_and_evaluate(df, model_type, seq_length)
 
                 st.subheader("Evaluation Metrics")
-                st.write(f"Mean Squared Error: {mse:.4f}")
-                st.write(f"Mean Absolute Error: {mae:.4f}")
-                st.write(f"R-squared: {r2:.4f}")
+                st.write(f"Mean Squared Error: {results['mse']:.4f}")
+                st.write(f"Mean Absolute Error: {results['mae']:.4f}")
 
-                st.subheader("Predictions vs. Actual")
-                results_df = pd.DataFrame({'Actual': y_test, 'Predicted': y_pred})
-                st.line_chart(results_df)
-
-                # Save model and scaler (you might want to add a download button)
-                joblib.dump(model, f'trained_{model_type}_model.joblib')
+                st.subheader("Predictions/Forecasts")
                 if model_type != "Prophet":
-                    joblib.dump(scaler, f'scaler.joblib')
-                st.success(f"Trained {model_type} model and scaler saved.")
+                    results_df = pd.DataFrame(
+                        results["y_test"], columns=[f"Actual_{col}" for col in df.select_dtypes(include=[np.number]).columns.tolist() if col != 'Date']
+                    )
+                    pred_df = pd.DataFrame(
+                        results["y_pred"], columns=[f"Predicted_{col}" for col in df.select_dtypes(include=[np.number]).columns.tolist() if col != 'Date']
+                    )
+                    final_df = pd.concat([results_df, pred_df], axis=1)
+                    st.dataframe(final_df)
+                    st.line_chart(final_df)  # Visualize all predictions
+
+                    # Save model and scaler
+                    joblib.dump(results["model"], f'trained_{model_type}_model.joblib')
+                    if model_type != "Prophet":
+                        joblib.dump(results["scaler"], f'scaler.joblib')
+                    st.success(f"Trained {model_type} model and scaler saved.")
+                else:
+                    for col, forecast in results["forecasts"].items():
+                        st.write(f"Forecast for {col}:")
+                        forecast_df = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].tail(30)  # Show last 30 days
+                        st.dataframe(forecast_df)
+                        st.line_chart(forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].set_index('ds'))
 
             except Exception as e:
                 st.error(f"Error during training/prediction: {e}")
