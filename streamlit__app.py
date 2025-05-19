@@ -1,13 +1,7 @@
-# streamlit_app.py
-
 import streamlit as st
 import pandas as pd
 import json
 import os
-
-# Optional: Uncomment if you want to load models
-# import tensorflow as tf
-# import joblib
 
 # --- Set page configuration
 st.set_page_config(
@@ -58,13 +52,13 @@ def show_login():
             st.session_state.logged_in = True
             st.session_state.page = 'upload'
             st.success("Logged in successfully!")
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Incorrect username or password.")
 
     if st.button("Create New Account"):
         st.session_state.page = 'signup'
-        st.experimental_rerun()
+        st.rerun()
 
 def show_signup():
     st.title("Create New Account")
@@ -75,13 +69,13 @@ def show_signup():
         if signup(new_username, new_password):
             st.success("Account created successfully!")
             st.session_state.page = 'login'
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.error("Username already exists. Try another one.")
 
     if st.button("Back to Login"):
         st.session_state.page = 'login'
-        st.experimental_rerun()
+        st.rerun()
 
 def show_upload():
     st.title("Upload Files for Prediction")
@@ -111,15 +105,13 @@ def show_upload():
             except Exception as e:
                 st.warning(f"Could not preview file '{file.name}': {e}")
 
-        # Add your prediction/model logic here as needed
-
     else:
         st.info("No files uploaded yet.")
 
     if st.button("Logout"):
         st.session_state.logged_in = False
         st.session_state.page = 'login'
-        st.experimental_rerun()
+        st.rerun()
 
 # --- Main app logic
 if st.session_state.page == 'login':
@@ -130,4 +122,4 @@ elif st.session_state.logged_in and st.session_state.page == 'upload':
     show_upload()
 else:
     st.session_state.page = 'login'
-    st.experimental_rerun()
+    st.rerun()
