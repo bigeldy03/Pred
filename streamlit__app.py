@@ -8,7 +8,6 @@ import tensorflow as tf
 import joblib
 
 # --- Set page configuration
-
 st.set_page_config(page_title="User Behavior & Traffic Prediction", page_icon="🚀", layout="wide")
 
 # --- Load Models
@@ -89,29 +88,30 @@ elif st.session_state.page == 'signup':
 
 elif st.session_state.logged_in and st.session_state.page == 'upload':
     st.title("Upload Files for Prediction")
-    # your upload logic
-
-
-elif st.session_state.logged_in and st.session_state.page == 'upload':
-    st.title("Upload Files for Prediction")
     st.info("Please upload 3 files: Bundle 1, Bundle 2, and Traffic")
-
     uploaded_files = st.file_uploader("Upload your 3 files", accept_multiple_files=True, type=['csv'])
 
-if uploaded_files and len(uploaded_files) == 3:
-    try:
-        df1 = pd.read_csv(uploaded_files[0])
-        df2 = pd.read_csv(uploaded_files[1])
-        df3 = pd.read_csv(uploaded_files[2])
+    if uploaded_files is not None and len(uploaded_files) == 3:
+        try:
+            df1 = pd.read_csv(uploaded_files[0])
+            df2 = pd.read_csv(uploaded_files[1])
+            df3 = pd.read_csv(uploaded_files[2])
 
-        # Predictions here...
-        # model_m1.predict(df1), etc.
-        
-        # Display predictions
-        st.subheader("Predictions")
-        # Show results...
+            # Load models
+            model_m1, model_m9, traffic_model = load_models()
 
-    except Exception as e:
-        st.error(f"Error during prediction: {e}")
-else:
-    st.warning("Please upload exactly 3 CSV files.")
+            # Predictions here...
+            # pred1 = model_m1.predict(df1)
+            # pred2 = model_m9.predict(df2)
+            # pred3 = traffic_model.predict(df3)
+
+            st.subheader("Predictions")
+            st.write("Prediction results would be shown here.")
+            # st.write(pred1)
+            # st.write(pred2)
+            # st.write(pred3)
+
+        except Exception as e:
+            st.error(f"Error during prediction: {e}")
+    else:
+        st.warning("Please upload exactly 3 CSV files.")
