@@ -21,17 +21,21 @@ st.markdown("---")
 uploaded_bundle_file = st.file_uploader("📂 Upload your <b>bundle usage</b> data", type=['csv', 'xlsx'], key="bundle")
 uploaded_traffic_file = st.file_uploader("📂 Upload your <b>traffic</b> data", type=['csv', 'xlsx'], key="traffic")
 
-def process_dates(df):
-    df['Date'] = pd.to_numeric(df['Date'], errors='coerce')
-    df = df[(df['Date'] > 0) & (df['Date'] < 50000)]
-    df['Date'] = pd.to_datetime(df['Date'], origin='1899-12-30', unit='D')
-    return df
+def infer_and_process_date(df):
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]) or 'date' in col.lower() or 'time' in col.lower():
+            try:
+                df[col] = pd.to_datetime(df[col], errors='coerce')
+                df = df.dropna(subset=[col])
+                df = df.sort_values(by=col)
+                return df, col
+            except:
+                continue
+    return df, None
 
 def preprocess(df):
     df = df.fillna(df.mean(numeric_only=True))
     numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    if 'Date' in numerical_cols:
-        numerical_cols.remove('Date')
     scaler = MinMaxScaler()
     df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
     return df, scaler, numerical_cols
@@ -67,8 +71,9 @@ if uploaded_bundle_file and uploaded_traffic_file:
         traffic_df = pd.read_csv(uploaded_traffic_file) if uploaded_traffic_file.name.endswith('.csv') else pd.read_excel(uploaded_traffic_file)
 
         st.success("✅ Files uploaded successfully")
-        bundle_df = process_dates(bundle_df)
-        traffic_df = process_dates(traffic_df)
+
+        bundle_df, bundle_date_col = infer_and_process_date(bundle_df)
+        traffic_df, traffic_date_col = infer_and_process_date(traffic_df)
 
         bundle_preds, _, bundle_cols, _, _ = predict_with_lstm(bundle_df)
         traffic_preds, _, traffic_cols, _, _ = predict_with_lstm(traffic_df)
