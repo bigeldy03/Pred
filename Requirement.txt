@@ -6,3 +6,4 @@ scikit-learn
 openpyxl
 xgboost
 prophet
+streamlit_authenticator
