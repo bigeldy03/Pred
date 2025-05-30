@@ -36,6 +36,8 @@ def infer_and_process_date(df):
 def preprocess(df):
     df = df.fillna(df.mean(numeric_only=True))
     numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if not numerical_cols:
+        raise ValueError("No numerical columns found for training.")
     scaler = MinMaxScaler()
     df[numerical_cols] = scaler.fit_transform(df[numerical_cols])
     return df, scaler, numerical_cols
@@ -58,7 +60,11 @@ def build_lstm_model(input_shape, output_dim):
 
 def predict_with_lstm(df, seq_length=10):
     df, scaler, numerical_cols = preprocess(df)
+    if df.empty or len(numerical_cols) == 0:
+        raise ValueError("Dataframe is empty or has no valid numerical columns.")
     X, y = create_sequences(df[numerical_cols], seq_length)
+    if len(X) == 0:
+        raise ValueError("Not enough data to create sequences. Try using more rows.")
     X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=False, test_size=0.2)
     model = build_lstm_model(input_shape=(X_train.shape[1], X_train.shape[2]), output_dim=y.shape[1])
     model.fit(X_train, y_train, epochs=20, verbose=0)
@@ -72,11 +78,20 @@ if uploaded_bundle_file and uploaded_traffic_file:
 
         st.success("✅ Files uploaded successfully")
 
+        st.subheader("📄 Preview of Uploaded Data")
+        st.write("**Bundle Data:**")
+        st.dataframe(bundle_df.head())
+        st.write("**Traffic Data:**")
+        st.dataframe(traffic_df.head())
+
         bundle_df, bundle_date_col = infer_and_process_date(bundle_df)
         traffic_df, traffic_date_col = infer_and_process_date(traffic_df)
 
         bundle_preds, _, bundle_cols, _, _ = predict_with_lstm(bundle_df)
         traffic_preds, _, traffic_cols, _, _ = predict_with_lstm(traffic_df)
+
+        st.write("📌 Numerical columns in bundle data:", bundle_cols)
+        st.write("📌 Numerical columns in traffic data:", traffic_cols)
 
         trends = {col: bundle_preds[:, i].mean() for i, col in enumerate(bundle_cols)}
         best_bundle = max(trends, key=trends.get)
