@@ -1,9 +1,10 @@
 streamlit
-tensorflow
 pandas
-joblib
+numpy
+seaborn
+matplotlib
 scikit-learn
-openpyxl
-xgboost
-prophet
+keras
+tensorflow
 streamlit-authenticator
+pyyaml
